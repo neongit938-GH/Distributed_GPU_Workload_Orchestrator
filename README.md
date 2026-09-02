@@ -162,4 +162,8 @@ Enterprise tools solve this only at large scale, requiring Kubernetes and dedica
 
 ---
 **Progress Sheet Maintained by us** : https://docs.google.com/spreadsheets/d/1018tHr_5Mz-hujhKg3VcILfnErAdnoaynfrkOHNNoTM/edit?gid=267121550#gid=267121550
+
 **Questions?** Reach out to the team at `OSDBMS-V-2026-T065` (internal) or via the GitHub repository issues.
+
+**Overleaf Sheets (For PPT and proposal): **
+a) Phase 1 [Uploaded on 2 September 2026] : https://www.overleaf.com/project/6a96622d1b170d7ef8d37bd5
