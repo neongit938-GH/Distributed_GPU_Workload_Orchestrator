@@ -150,35 +150,7 @@ Enterprise tools solve this only at large scale, requiring Kubernetes and dedica
 
 ---
 
-## 11. Installation & Running (Planned)
-
-> *Work in progress – final steps will be added after Phase‑II.*
-
-```bash
-# 1. Clone repository
-git clone https://github.com/neongit938-GH/Distributed_GPU_Workload_Orchestrator.git
-cd Distributed_GPU_Workload_Orchestrator
-
-# 2. Set up database (PostgreSQL)
-createdb fairlane
-# apply schema.sql
-
-# 3. Configure NFS mount (if not already)
-mount -t nfs <server>:/shared /mnt/nfs
-
-# 4. Run central server
-python server.py
-
-# 5. Start worker agent on each GPU machine
-python worker.py
-
-# 6. Access dashboard at
-http://localhost:8000
-```
-
----
-
-## 12. References
+## 11. References
 
 - NVIDIA Run:ai – [https://run‑ai‑docs.nvidia.com/saas](https://run-ai-docs.nvidia.com/saas)
 - NVIDIA Slinky (Slurm‑on‑Kubernetes) – [https://developer.nvidia.com/blog/running‑large‑scale‑gpu‑workloads‑on‑kubernetes‑with‑slurm/](https://developer.nvidia.com/blog/running-large-scale-gpu-workloads-on-kubernetes-with-slurm/)
@@ -189,11 +161,5 @@ http://localhost:8000
 - Python `subprocess` – [https://docs.python.org/3/library/subprocess.html](https://docs.python.org/3/library/subprocess.html)
 
 ---
-
-## 13. License
-
-To be determined. For academic/educational use.
-
----
-
+**Progress Sheet Maintained by us** : https://docs.google.com/spreadsheets/d/1018tHr_5Mz-hujhKg3VcILfnErAdnoaynfrkOHNNoTM/edit?gid=267121550#gid=267121550
 **Questions?** Reach out to the team at `OSDBMS-V-2026-T065` (internal) or via the GitHub repository issues.
