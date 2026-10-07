@@ -11,3 +11,5 @@ wheels/
 .venv
 
 .env
+.idea/
+.~lock.OSDBMS_T065_Formatted.xlsx#
