@@ -1,0 +1,144 @@
+================================================================================
+FAIRLANE GPU ORCHESTRATOR — PHASE 6 FAILURE & RESILIENCE TESTS
+Owner: Suryansh Bhatnagar
+Project: GPU Orchestrator — Mini-Project 3 (Remote Execution Launcher)
+Topic: Integration & Validation
+Timestamp: 2026-10-12 14:02:00 IST
+Host Environment: Windows 11 (RTX 2050 4GB)
+================================================================================
+
+1. TEST CASE 1: MISSING SCRIPT (PATH VALIDATION ERROR)
+--------------------------------------------------------------------------------
+Command:
+curl -s -X POST http://localhost:8000/dispatch \
+     -H "Content-Type: application/json" \
+     -d '{"job_id":"test1","script_path":"/nfs/shared/scripts/missing.py","gpu_indices":[0],"memory_mb":256,"timeout":5}'
+
+HTTP Status: 400 Bad Request
+Response Body:
+{
+  "detail": "Access denied: script path '/nfs/shared/scripts/missing.py' is outside the allowed root 'D:\\2_College_and_Career\\AStudy\\Problem_Based_Learning\\PBL_Subjects\\5th_Semester_PBL\\Worker_Agent\\gpu-orchestrator\\worker-agent\\scripts'."
+}
+
+Variant (Relative path missing script):
+curl -s -X POST http://localhost:8000/dispatch \
+     -H "Content-Type: application/json" \
+     -d '{"job_id":"test1_rel","script_path":"missing_script.py","gpu_indices":[0],"memory_mb":256,"timeout":5}'
+
+HTTP Status: 400 Bad Request
+Response Body:
+{
+  "detail": "Script 'missing_script.py' not found at resolved location 'D:\\2_College_and_Career\\AStudy\\Problem_Based_Learning\\PBL_Subjects\\5th_Semester_PBL\\Worker_Agent\\gpu-orchestrator\\worker-agent\\scripts\\missing_script.py'."
+}
+
+Verification Result: PASSED (Expected HTTP 400 Bad Request on path/existence validation).
+
+
+--------------------------------------------------------------------------------
+2. TEST CASE 2: NON-ZERO EXIT CODE (PROCESS FAILURE HANDLING)
+--------------------------------------------------------------------------------
+Target Script: worker-agent/scripts/failing.py
+Content:
+  import sys
+  if __name__ == "__main__":
+      print("Process exiting with error code 1", file=sys.stderr)
+      sys.exit(1)
+
+Command:
+curl -s -X POST http://localhost:8000/dispatch \
+     -H "Content-Type: application/json" \
+     -d '{"job_id":"test2","script_path":"failing.py","gpu_indices":[0],"memory_mb":256,"timeout":5}'
+
+HTTP Status: 200 OK
+Response Body:
+{
+  "job_id": "test2",
+  "status": "failed",
+  "exit_code": 1,
+  "log_stdout": "",
+  "log_stderr": "Process exiting with error code 1\n",
+  "timeout_occurred": false,
+  "reason": null
+}
+
+Verification Result: PASSED (Captured non-zero exit code 1, recorded stderr, status set to "failed").
+
+
+--------------------------------------------------------------------------------
+3. TEST CASE 3: TIMEOUT HANDLING (PROCESS TIMEOUT & SIGKILL TERMINATION)
+--------------------------------------------------------------------------------
+Target Script: worker-agent/scripts/timeout.py
+Content:
+  import time
+  if __name__ == "__main__":
+      time.sleep(30)
+
+Command:
+curl -s -X POST http://localhost:8000/dispatch \
+     -H "Content-Type: application/json" \
+     -d '{"job_id":"test3","script_path":"timeout.py","gpu_indices":[0],"memory_mb":256,"timeout":2}'
+
+HTTP Status: 200 OK
+Response Body:
+{
+  "job_id": "test3",
+  "status": "timeout",
+  "exit_code": -9,
+  "log_stdout": "",
+  "log_stderr": "",
+  "timeout_occurred": true,
+  "reason": null
+}
+
+Server Log Output:
+[WARNING] worker-launcher: Job 'test3' exceeded timeout (2s). Terminating process.
+[INFO] worker-launcher: Job 'test3' finished with status='timeout', exit_code=-9
+
+Verification Result: PASSED (Enforced 2-second timeout, terminated child process via proc.kill(), returned status="timeout" and exit_code=-9).
+
+
+--------------------------------------------------------------------------------
+4. TEST CASE 4: NVML PRE-DISPATCH MEMORY REJECTION
+--------------------------------------------------------------------------------
+Target Script: worker-agent/scripts/failing.py
+Requested Memory: 999999 MB (exceeds available 3962 MB on GPU 0)
+
+Command:
+curl -s -X POST http://localhost:8000/dispatch \
+     -H "Content-Type: application/json" \
+     -d '{"job_id":"test4_reject_mem","script_path":"failing.py","gpu_indices":[0],"memory_mb":999999,"timeout":5}'
+
+HTTP Status: 200 OK
+Response Body:
+{
+  "job_id": "test4_reject_mem",
+  "status": "rejected",
+  "exit_code": -1,
+  "log_stdout": "",
+  "log_stderr": "",
+  "timeout_occurred": false,
+  "reason": "GPU 0: insufficient free memory (3962MB < 999999MB)"
+}
+
+Server Log Output:
+[WARNING] worker-launcher: Job 'test4_reject_mem' rejected: GPU 0: insufficient free memory (3962MB < 999999MB)
+
+Verification Result: PASSED (Prevented subprocess launch; rejected proactively via NVML pre-check with informative reason).
+
+
+--------------------------------------------------------------------------------
+5. TEST CASE 5: NVML FAIL-CLOSED & BYPASS VALIDATION
+--------------------------------------------------------------------------------
+Condition A: NVML library unavailable & WORKER_ALLOW_NVML_BYPASS=false
+  Result: Rejects all GPU requests
+  Rejection Reason: "NVML library unavailable; GPU validation required."
+  Status: PASSED (Fail-closed by default)
+
+Condition B: NVML library unavailable & WORKER_ALLOW_NVML_BYPASS=true
+  Result: check_gpu_resources returns None, warning logged to console
+  Log Message: "[WARNING] worker-launcher: NVML not available; bypassing GPU checks as per configuration."
+  Status: PASSED (Bypass allowed explicitly only for development environments)
+
+================================================================================
+SUMMARY: ALL 5 FAILURE AND RESILIENCE TESTS PASSED CLEANLY
+================================================================================

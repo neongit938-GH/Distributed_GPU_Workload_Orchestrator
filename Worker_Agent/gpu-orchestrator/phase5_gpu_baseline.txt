@@ -1,0 +1,21 @@
+================================================================================
+FAIRLANE GPU ORCHESTRATOR — PHASE 5: BASELINE GPU MEMORY CHECK
+Owner: Suryansh Bhatnagar
+Project: GPU Orchestrator — Mini-Project 3 (Remote Execution Launcher)
+Topic: Highest-risk test (Concurrent jobs on the same GPU)
+Timestamp: 2026-10-12 12:56:08 IST
+================================================================================
+
+Command:
+nvidia-smi --query-gpu=index,name,memory.total,memory.free --format=csv -i 0
+
+Baseline Output:
+index, name, memory.total [MiB], memory.free [MiB]
+0, NVIDIA GeForce RTX 2050, 4096 MiB, 3962 MiB
+
+Memory Summary for GPU 0:
+- Device Name: NVIDIA GeForce RTX 2050
+- Total Physical VRAM: 4096 MiB (4.0 GB)
+- Free Physical VRAM:  3962 MiB (~96.7% available)
+- Utilization Status:  Idle, no background compute processes active
+================================================================================

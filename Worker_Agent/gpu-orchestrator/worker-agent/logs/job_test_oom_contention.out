@@ -1,0 +1,2 @@
+[INFO] Allocating 409 MB (10.0% of 4096 MB)
+[ERROR] OOM during allocation: Requested 409 MB exceeds available capacity (3962 MB free).

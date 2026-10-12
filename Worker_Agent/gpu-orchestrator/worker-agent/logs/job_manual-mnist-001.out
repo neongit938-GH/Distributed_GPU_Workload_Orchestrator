@@ -1,0 +1,30 @@
+[INFO] PyTorch version: 2.14.1+cpu
+[INFO] CUDA available: False
+[INFO] Running on CPU
+[INFO] Starting training on device: cpu
+[INFO] Loading MNIST dataset...
+[INFO] Epoch 1 [1/938] Loss: 2.2982
+[INFO] Epoch 1 [100/938] Loss: 0.2560
+[INFO] Epoch 1 [200/938] Loss: 0.2144
+[INFO] Epoch 1 [300/938] Loss: 0.0817
+[INFO] Epoch 1 [400/938] Loss: 0.1340
+[INFO] Epoch 1 [500/938] Loss: 0.0394
+[INFO] Epoch 1 [600/938] Loss: 0.3905
+[INFO] Epoch 1 [700/938] Loss: 0.1286
+[INFO] Epoch 1 [800/938] Loss: 0.1035
+[INFO] Epoch 1 [900/938] Loss: 0.0594
+[INFO] Epoch 1 [938/938] Loss: 0.1937
+[INFO] Epoch 2 [1/938] Loss: 0.1142
+[INFO] Epoch 2 [100/938] Loss: 0.0477
+[INFO] Epoch 2 [200/938] Loss: 0.0297
+[INFO] Epoch 2 [300/938] Loss: 0.0778
+[INFO] Epoch 2 [400/938] Loss: 0.0167
+[INFO] Epoch 2 [500/938] Loss: 0.1212
+[INFO] Epoch 2 [600/938] Loss: 0.1017
+[INFO] Epoch 2 [700/938] Loss: 0.0670
+[INFO] Epoch 2 [800/938] Loss: 0.0545
+[INFO] Epoch 2 [900/938] Loss: 0.0289
+[INFO] Epoch 2 [938/938] Loss: 0.0684
+[INFO] Total training time: 57.40s
+[INFO] Final loss: 0.0684
+[INFO] Device used: cpu

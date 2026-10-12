@@ -1,0 +1,81 @@
+=== PHASE 8 TASK 2: FINAL REGRESSION AND RESOURCE-VALIDATION TESTS ===
+Timestamp: 2026-10-12T15:55:37Z
+
+0. Test environment:
+  WORKER_ALLOWED_SCRIPT_ROOT=D:\2_College_and_Career\AStudy\Problem_Based_Learning\PBL_Subjects\5th_Semester_PBL\Worker_Agent\gpu-orchestrator\test_scripts_env
+  SCHEDULER_WORKER_TOKEN set (length: 32)
+  WORKER_ALLOW_NVML_BYPASS=false (default: fail-closed)
+
+1. Creating test scripts in WORKER_ALLOWED_SCRIPT_ROOT:
+  Created: good_script.py
+  Created: bad_script.py
+  Created: timeout_script.py
+  Created: cpu_script.py
+  Created: synthetic_workload.py
+
+2. Running comprehensive test suite with deterministic NVML mocking:
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.1.1, pluggy-1.6.0 -- D:\2_College_and_Career\AStudy\Problem_Based_Learning\PBL_Subjects\5th_Semester_PBL\Worker_Agent\gpu-orchestrator\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\2_College_and_Career\AStudy\Problem_Based_Learning\PBL_Subjects\5th_Semester_PBL\Worker_Agent\gpu-orchestrator
+plugins: anyio-4.15.1, asyncio-1.4.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 13 items
+
+worker-agent/tests/test_launcher.py::test_health_check PASSED            [  7%]
+worker-agent/tests/test_launcher.py::test_valid_dispatch PASSED          [ 15%]
+worker-agent/tests/test_launcher.py::test_missing_script PASSED          [ 23%]
+worker-agent/tests/test_launcher.py::test_invalid_path_traversal PASSED  [ 30%]
+worker-agent/tests/test_launcher.py::test_nonzero_exit_code PASSED       [ 38%]
+worker-agent/tests/test_launcher.py::test_timeout_handling PASSED        [ 46%]
+worker-agent/tests/test_launcher.py::test_nvml_insufficient_memory PASSED [ 53%]
+worker-agent/tests/test_launcher.py::test_nvml_high_utilization PASSED   [ 61%]
+worker-agent/tests/test_launcher.py::test_missing_nvml_fail_closed PASSED [ 69%]
+worker-agent/tests/test_launcher.py::test_missing_nvml_with_bypass PASSED [ 76%]
+worker-agent/tests/test_launcher.py::test_empty_gpu_indices_cpu_fallback PASSED [ 84%]
+worker-agent/tests/test_launcher.py::test_concurrent_jobs_isolation PASSED [ 92%]
+worker-agent/tests/test_launcher.py::test_metadata_and_priority_preserved PASSED [100%]
+
+============================== warnings summary ===============================
+.venv\Lib\site-packages\fastapi\testclient.py:1
+  D:\2_College_and_Career\AStudy\Problem_Based_Learning\PBL_Subjects\5th_Semester_PBL\Worker_Agent\gpu-orchestrator\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 13 passed, 1 warning in 9.86s ========================
+
+Test suite exit code: 0
+
+3. Verifying NVML mocking was used in tests:
+  5: from unittest.mock import patch, MagicMock
+  57: def mock_nvml_device_get_handle_by_index(gpu_index):
+  58: handle = MagicMock()
+  62: def mock_nvml_device_get_utilization_rates(handle):
+  63: util = MagicMock()
+  69: def setup_test_env(tmp_path, monkeypatch):
+  82: monkeypatch.setenv("WORKER_ALLOWED_SCRIPT_ROOT", str(script_dir))
+  83: monkeypatch.setenv("SCHEDULER_WORKER_TOKEN", "0123456789abcdef0123456789abcdef")
+  84: monkeypatch.setenv("WORKER_ALLOW_NVML_BYPASS", "false")
+  86: monkeypatch.setattr(launcher, "ALLOWED_SCRIPT_ROOT", str(script_dir))
+
+4. TEST SUITE SUMMARY
+   Total tests: 13
+   Passed: 13
+   Failed: 0
+   Exit Code: 0
+
+   Key validation points covered:
+     * Valid dispatch completion (good_script.py -> completed, exit_code=0)
+     * Missing script validation -> HTTP 400 Bad Request
+     * Invalid path traversal attempt -> HTTP 400 Bad Request
+     * Non-zero exit code (bad_script.py -> failed, exit_code=1)
+     * Timeout enforcement (timeout_script.py -> timeout, exit_code=-9)
+     * NVML insufficient memory (mocked 1MB free vs 2MB req -> rejected)
+     * NVML high utilization (mocked 90% util vs 80% thresh -> rejected)
+     * Missing NVML library (fail-closed -> rejected with error reason)
+     * Missing NVML with bypass enabled (WORKER_ALLOW_NVML_BYPASS=true -> completed)
+     * Empty GPU indices -> CPU fallback without NVML queries
+     * Concurrent jobs isolation -> distinct thread jobs executed concurrently
+     * Metadata and priority -> preserved and handled transparently
+
+ALL REGRESSION AND RESOURCE-VALIDATION TESTS PASSED (13/13).

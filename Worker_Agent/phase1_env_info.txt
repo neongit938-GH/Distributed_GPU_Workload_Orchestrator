@@ -1,0 +1,208 @@
+================================================================================
+FAIRLANE GPU ORCHESTRATOR — PHASE 1 ENVIRONMENT & FEASIBILITY REPORT
+Owner: Suryansh Bhatnagar
+Project: GPU Orchestrator — Mini-Project 3 (Remote Execution Launcher)
+Tag: Foundation
+Timestamp: 2026-10-12 11:12:40 IST
+================================================================================
+
+1. SYSTEM INVENTORY
+--------------------------------------------------------------------------------
+OS Environment:
+  Operating System: Microsoft Windows 11 Home Single Language (64-bit)
+  OS Version: 10.0.26200 (Build 26200)
+  Target Deployment Compatibility: Ubuntu 24.04 LTS (per Fairlane Master Context)
+
+Python Environment:
+  System Python Aliases: Windows App execution alias detected
+  Active Project Python: Python 3.12.12 (CPython 64-bit AMD64)
+  Dependency Manager: uv 0.10.7
+  Virtual Environment: gpu-orchestrator/.venv (Python 3.12.12)
+
+NVIDIA GPU & Driver Inventory (nvidia-smi):
+Mon Oct 12 11:12:24 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 592.82                 Driver Version: 592.82         CUDA Version: 13.1     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                  Driver-Model | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 2050      WDDM  |   00000000:01:00.0 Off |                  N/A |
+| N/A   39C    P3              9W /   30W |       0MiB /   4096MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+NVML Device Check via Python (pynvml / nvidia-ml-py):
+  NVML Status: Initialized successfully
+  Device Count: 1
+  Device 0 Name: NVIDIA GeForce RTX 2050
+  Total VRAM: 4096.0 MB
+  Free VRAM: 3962.0 MB
+
+--------------------------------------------------------------------------------
+2. PYTORCH & CUDA FEASIBILITY CHECK (check_torch.py)
+--------------------------------------------------------------------------------
+Script Path: gpu-orchestrator/check_torch.py
+Command: gpu-orchestrator/.venv/Scripts/python.exe gpu-orchestrator/check_torch.py
+
+Output:
+PyTorch version: 2.14.1+cpu
+CUDA available: False
+
+Note on CUDA Status:
+  CPU-only wheel installed for Phase 1 baseline as specified in Phase 1 instructions
+  ("pip install torch torchvision # CPU-only for now; GPU drivers handled later").
+  Physical GPU (RTX 2050, 4GB VRAM) and NVIDIA Driver 592.82 with CUDA 13.1 support are
+  verified and accessible via NVML / nvidia-smi. Full CUDA PyTorch acceleration will be
+  bound during Phase 3 GPU execution validation.
+
+--------------------------------------------------------------------------------
+3. PROJECT INITIALIZATION & DEPENDENCY SPECIFICATION
+--------------------------------------------------------------------------------
+Directory Hierarchy:
+  gpu-orchestrator/
+  ├── .venv/ (CPython 3.12.12 virtual environment)
+  ├── check_torch.py
+  ├── phase1_env_info.txt
+  ├── requirements.txt
+  └── worker-agent/
+      ├── __init__.py
+      ├── scripts/
+      │   └── sanity_check.py
+      ├── tests/
+      └── logs/
+
+Installed Packages (requirements.txt):
+  annotated-doc==0.0.5
+  annotated-types==0.8.0
+  anyio==4.15.1
+  click==8.5.0
+  fastapi==0.143.0
+  filelock==4.1.1
+  fsspec==2026.9.0
+  h11==0.16.0
+  idna==3.20
+  jinja2==3.1.6
+  markupsafe==3.0.4
+  mpmath==1.3.0
+  networkx==3.7
+  numpy==2.5.4
+  nvidia-ml-py==13.615.71
+  opentelemetry-api==1.45.1
+  pillow==12.3.0
+  pydantic==2.14.1
+  pydantic-core==2.50.1
+  pynvml==13.0.1
+  setuptools==84.0.0
+  starlette==1.7.0
+  sympy==1.14.0
+  torch==2.14.1
+  torchvision==0.29.1
+  typing-extensions==4.16.0
+  typing-inspection==0.4.4
+  uvicorn==0.54.0
+
+--------------------------------------------------------------------------------
+4. REMOTE ACCESS & STORAGE VALIDATION
+--------------------------------------------------------------------------------
+Secondary Worker Machine:
+  Status: Not yet provisioned / dedicated secondary node unallocated for Phase 1.
+  Localhost Loopback Test:
+    Command: ssh -o BatchMode=yes -o ConnectTimeout=3 localhost "echo 'localhost reachable'"
+    Result: Connection refused (OpenSSH Server daemon is not enabled on local dev machine).
+  Designated Target Spec for Phase 2:
+    Expected Worker Hostname / IP: worker-node-01.lab.local (or localhost mock runner)
+    Shared NFS Path Convention: /mnt/fairlane/nfs/shared/ (WORKER_ALLOWED_SCRIPT_ROOT)
+    Storage Owner: Harshvardhan (NFS spec owner)
+    Contract Alignment: Bearer authentication token and script isolation path will be
+                        enforced against WORKER_ALLOWED_SCRIPT_ROOT in Phase 2.
+
+--------------------------------------------------------------------------------
+5. BASELINE EXECUTION TEST (sanity_check.py)
+--------------------------------------------------------------------------------
+Script Path: gpu-orchestrator/worker-agent/scripts/sanity_check.py
+Command: gpu-orchestrator/.venv/Scripts/python.exe gpu-orchestrator/worker-agent/scripts/sanity_check.py
+
+Stdout Output:
+Environment ready. Python: 3.12.12 (main, Feb 12 2026, 00:40:26) [MSC v.1944 64 bit (AMD64)]
+
+Execution Status: SUCCESS (Exit Code 0)
+================================================================================
+END OF PHASE 1 REPORT
+================================================================================
+
+================================================================================
+PHASE 2 OUTPUT: PYTHON TRAINING & VERIFICATION SCRIPTS
+Timestamp: 2026-10-12 11:26:00 IST
+================================================================================
+- Script created: gpu-orchestrator/worker-agent/scripts/mnist_cnn.py
+- Test run (CPU):
+  [INFO] PyTorch version: 2.14.1+cpu
+  [INFO] CUDA available: False
+  [INFO] Running on CPU
+  [INFO] Starting training on device: cpu
+  [INFO] Total training time: 37.86s | Final loss: 0.1867 | Device used: cpu
+- Test run (synthetic --epochs 5):
+  [INFO] Total training time: 1.31s
+  [INFO] Final loss: 2.4644
+  [INFO] Device used: cpu
+- Test run (CPU fallback with CUDA_VISIBLE_DEVICES="" and --cpu):
+  [INFO] Total training time: 0.52s
+  [INFO] Final loss: 2.4086
+  [INFO] Device used: cpu
+================================================================================
+PHASE 3 OUTPUT: WORKER AGENT LAUNCHER IMPLEMENTATION & DISPATCH
+Timestamp: 2026-10-12 11:47:00 IST
+================================================================================
+- Launcher Module: gpu-orchestrator/worker-agent/launcher.py
+- Endpoints:
+  - GET  /healthz  -> {"status": "ok"}
+  - POST /dispatch -> DispatchResponse (job_id, status, exit_code, log_stdout, log_stderr, timeout_occurred)
+- Automated Test Suite (pytest):
+  - File: gpu-orchestrator/worker-agent/tests/test_launcher.py
+  - Result: 11 passed in 9.04s (healthz, validations, timeouts, failures, CUDA isolation)
+- Manual HTTP Dispatch Test (mnist_cnn.py):
+  - Request: POST /dispatch {"job_id": "manual-mnist-001", "script_path": "mnist_cnn.py", "gpu_indices": [0], "timeout": 90}
+  - Status: completed (exit_code: 0, timeout_occurred: false)
+  - Training Output: 2 epochs completed, final loss: 0.0684, training time: 57.40s
+- Manual curl Dispatch Test (sanity_check.py):
+  - Request: POST /dispatch {"job_id": "test-curl-002", "script_path": "sanity_check.py", "gpu_indices": [0], "timeout": 10}
+  - Output: {"job_id":"test-curl-002","status":"completed","exit_code":0,"timeout_occurred":false}
+- Validation Security Check:
+  - Path traversal attempt (../../outside.py) returned HTTP 400 Bad Request with descriptive security detail.
+================================================================================
+PHASE 6 OUTPUT: INTEGRATION, NVML PRE-CHECKS, FAILURE TESTS & CONTRACT
+Timestamp: 2026-10-12 14:02:00 IST
+================================================================================
+- NVML checks implemented:
+  - Added proactive check_gpu_resources() in launcher.py before process spawning.
+  - Validates free memory (memory.free >= memory_mb) and GPU utilization (<= 80%) via pynvml.
+  - Fail-closed behavior enforced when NVML is missing, unless WORKER_ALLOW_NVML_BYPASS=true.
+  - Direct rejection response with status="rejected" and reason string.
+- Failure tests passed:
+  - Missing script: HTTP 400 Bad Request (path security & file existence validation).
+  - Non-zero exit code: HTTP 200 OK with status="failed", exit_code=1, stderr logged.
+  - Timeout enforcement: HTTP 200 OK with status="timeout", exit_code=-9 (SIGKILL).
+  - Insufficient memory rejection: HTTP 200 OK with status="rejected" and reason="GPU 0: insufficient free memory".
+  - NVML bypass logic: Verified fail-closed when bypass=false and pass with warning when bypass=true.
+  - All recorded in phase6_failure_tests.txt.
+- Remote test:
+  - Limitation documented in phase6_remote_test.txt (single physical host setup).
+  - Validated multi-node readiness via 0.0.0.0 host binding, token auth, and async non-blocking execution.
+- Contract agreed:
+  - Yes, confirmed with Vansh Sagar.
+  - Dispatch Request and Completion Callback schemas finalized and reflected in OpenAPI docs (/docs).
+  - Saved to phase6_contract_agreement.txt.
+- Automated Test Suite:
+  - pytest test_launcher.py: 11/11 tests passed in 4.40s.
+================================================================================
+

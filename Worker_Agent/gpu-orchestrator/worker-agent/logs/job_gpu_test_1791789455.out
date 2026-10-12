@@ -1,0 +1,14 @@
+[INFO] PyTorch version: 2.14.1+cpu
+[INFO] CUDA available: True
+[INFO] Visible GPU count: 1
+[INFO] Current device: 0
+[INFO] GPU name: NVIDIA GeForce RTX 2050
+[INFO] Starting training on device: cpu
+[INFO] Generating synthetic tensor workload...
+[INFO] Input shape per batch: [64, 32, 32], Target classes: 10
+[INFO] Epoch 1 [1/200] Loss: 2.4316
+[INFO] Epoch 1 [100/200] Loss: 2.4009
+[INFO] Epoch 1 [200/200] Loss: 2.4552
+[INFO] Total training time: 0.51s
+[INFO] Final loss: 2.4552
+[INFO] Device used: cpu
