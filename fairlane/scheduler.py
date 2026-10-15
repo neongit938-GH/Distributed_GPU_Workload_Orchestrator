@@ -1,7 +1,11 @@
 import time
 
-from sqlalchemy import func, select
+"""from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+"""
+
+from sqlalchemy import Float, cast, func, select
+from sqlalchemy.orm import Session, aliased
 
 from fairlane.models import Job, JobExecution, Worker, WorkerGPU
 
@@ -9,12 +13,35 @@ ACTIVE = ("ASSIGNED", "RUNNING")
 CANDIDATE_JOBS = 10   # how far down the queue we look when the top job doesn't fit
 
 
+
+# Effective priority tuning (provisional, tune by experiment later)
+AGING_PER_MINUTE = 0.067   # 4-point gap closes in about 60 minutes of waiting
+HOG_PENALTY = 1.0          # one active job counts like about 15 minutes of waiting
+
+
+def effective_priority_expr():
+    """priority - aging * minutes_waited + hog_penalty * user's active jobs  (lower = more urgent)"""
+    other = aliased(Job)
+    active_jobs_of_user = (
+        select(func.count())
+        .where(other.user_id == Job.user_id, other.status.in_(ACTIVE))
+        .correlate(Job)
+        .scalar_subquery()
+    )
+    minutes_waited = func.extract("epoch", func.now() - Job.submitted_at) / 60.0
+    return (
+        cast(Job.priority, Float)
+        - AGING_PER_MINUTE * minutes_waited
+        + HOG_PENALTY * active_jobs_of_user
+    )
+
+
 def lock_next_job(session: Session, skip_ids: list[int]) -> Job | None:
     """Oldest QUEUED job that no other scheduler holds and we haven't already tried."""
     stmt = (
         select(Job)
         .where(Job.status == "QUEUED", Job.job_id.not_in(skip_ids))
-        .order_by(Job.submitted_at, Job.job_id)
+        .order_by(effective_priority_expr(), Job.submitted_at, Job.job_id)
         .limit(1)
         .with_for_update(skip_locked=True)
     )
