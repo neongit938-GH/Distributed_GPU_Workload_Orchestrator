@@ -1,9 +1,17 @@
-from datetime import datetime
+"""from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Identity, Integer, Text, false, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Identity, Integer, Text, false, func, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from sqlalchemy import Index, text
+from sqlalchemy import Index, text"""
+
+from datetime import datetime
+
+from sqlalchemy import (CheckConstraint, DateTime, ForeignKey, Identity, Index, Integer, Text,
+                        UniqueConstraint, false, func, text, true)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
 
 class Base(DeclarativeBase):
     pass
@@ -67,7 +75,7 @@ class Job(Base):
 class Worker(Base):
     __tablename__ = "workers"
     __table_args__ = (
-        CheckConstraint("status IN ('ONLINE','BUSY','DRAINING','OFFLINE')", name="ck_workers_status"),
+        CheckConstraint("status IN ('ONLINE','DRAINING','OFFLINE')", name="ck_workers_status"),
     )
 
     worker_id: Mapped[int] = mapped_column(Identity(always=True), primary_key=True)
@@ -84,6 +92,18 @@ class Worker(Base):
     last_heartbeat: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class WorkerGPU(Base):
+    __tablename__ = "worker_gpus"
+    __table_args__ = (
+        UniqueConstraint("worker_id", "gpu_index", name="uq_worker_gpu_index"),
+        CheckConstraint("total_memory > 0", name="ck_gpu_total_memory_positive"),
+    )
+    gpu_id: Mapped[int] = mapped_column(Identity(always=True), primary_key=True)
+    worker_id: Mapped[int] = mapped_column(ForeignKey("workers.worker_id"))
+    gpu_index: Mapped[int] = mapped_column(Integer)          # 0, 1, 2... as the worker sees it
+    gpu_name: Mapped[str | None] = mapped_column(Text)
+    total_memory: Mapped[int] = mapped_column(Integer)       # MiB
+    is_healthy: Mapped[bool] = mapped_column(server_default=true())
 
 
 
@@ -119,7 +139,7 @@ class JobExecution(Base):
 
     status: Mapped[str] = mapped_column(Text, server_default="ASSIGNED")
 
-    gpu_index: Mapped[int | None] = mapped_column(Integer)
+    gpu_id: Mapped[int] = mapped_column(ForeignKey("worker_gpus.gpu_id"))
 
 
     container_id: Mapped[str | None] = mapped_column(Text)

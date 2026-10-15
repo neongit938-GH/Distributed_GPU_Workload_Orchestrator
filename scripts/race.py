@@ -21,7 +21,7 @@ def run(name: str) -> None:
 
 
         if ex:
-            print(f"[{name}] job {ex.job_id} -> worker {ex.worker_id}   ({took:.1f}s)")
+            print(f"[{name}] job {ex.job_id} -> worker {ex.worker_id}, gpu {ex.gpu_id}   ({took:.1f}s)")
         else:
             print(f"[{name}] nothing assigned   ({took:.1f}s)")
 

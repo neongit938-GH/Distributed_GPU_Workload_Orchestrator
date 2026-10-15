@@ -1,57 +1,41 @@
 from datetime import datetime, timedelta, timezone
-from unicodedata import name
 
 from fairlane.db import SessionLocal
-from fairlane.models import Job, User, Worker
+from fairlane.models import Job, User, Worker, WorkerGPU
 
 
 def main():
     now = datetime.now(timezone.utc)
-
-
-    tie = now - timedelta(minutes=10)
-
-
     with SessionLocal() as session:
-        jack = User(name="Jack", email="alice@example.com", password_hash="x", role="STUDENT")
+        jack = User(name="Jack", email="jack@example.com", password_hash="x", role="STUDENT")
         jane = User(name="Jane", email="jane@example.com", password_hash="x", role="PROFESSOR")
         session.add_all([jack, jane])
 
-        session.flush()
+        node1 = Worker(worker_name="gpu-node-1", agent_url="http://10.0.0.11:8001", status="ONLINE", last_heartbeat=now)
+        node2 = Worker(worker_name="gpu-node-2", agent_url="http://10.0.0.12:8001", status="ONLINE", last_heartbeat=now)
+        node3 = Worker(worker_name="gpu-node-3", agent_url="http://10.0.0.13:8001", status="DRAINING", last_heartbeat=now)
+        session.add_all([node1, node2, node3])
+        session.flush()   # get user_id / worker_id values
 
         session.add_all([
-            Worker(worker_name="gpu-node-1", agent_url="http://10.0.0.11:8001",
-                   status="ONLINE", last_heartbeat=now),
-
-            Worker(worker_name="gpu-node-2", agent_url="http://10.0.0.12:8001",
-                   status="DRAINING", last_heartbeat=now),
-
-            Worker(worker_name="gpu-node-3", agent_url="http://10.0.0.13:8001",
-                   status="ONLINE", is_degraded=True, last_heartbeat=now),
+            WorkerGPU(worker_id=node1.worker_id, gpu_index=0, gpu_name="GTX 1050 Ti", total_memory=4096),
+            WorkerGPU(worker_id=node2.worker_id, gpu_index=0, gpu_name="RTX 3060", total_memory=12288),
+            WorkerGPU(worker_id=node2.worker_id, gpu_index=1, gpu_name="RTX 3060", total_memory=12288, is_healthy=False),
+            WorkerGPU(worker_id=node3.worker_id, gpu_index=0, gpu_name="RTX 3060", total_memory=12288),
         ])
 
+        def job(user, name, mib, minutes_ago):
+            return Job(user_id=user.user_id, job_name=name, script_path=f"users/{user.name.lower()}/{name}/train.py",
+                       priority=5 if user.role == "STUDENT" else 1, required_gpu_memory=mib,
+                       submitted_at=now - timedelta(minutes=minutes_ago))
 
-
-        session.add_all(
-            [
-                Job(user_id=jack.user_id, job_name="mnist-old", script_path="users/jack/job_1/train.py",
-                    priority=5, required_gpu_memory=2000, status="RUNNING",
-                    submitted_at=now - timedelta(minutes=30)),
-
-                Job(user_id=jack.user_id, job_name="mnist-b", script_path="users/jack/job_2/train.py",
-                    priority=5, required_gpu_memory=2000, submitted_at=tie),
-
-                Job(user_id=jane.user_id, job_name="cifar-p", script_path="users/jane/job_3/train.py",
-                    priority=1, required_gpu_memory=4000, submitted_at=tie),
-
-                Job(user_id=jack.user_id, job_name="bench-c", script_path="users/jack/job_4/train.py",
-                    priority=5, required_gpu_memory=1000, submitted_at=now - timedelta(minutes=5)),
-
-                Job(user_id=jane.user_id, job_name="cifar-q", script_path="users/jane/job_5/train.py",
-                    priority=1, required_gpu_memory=3000, submitted_at=now - timedelta(minutes=1)),
-            ]
-        )
-
+        session.add_all([
+            job(jack, "huge-llm", 16000, 30),     # fits nowhere (biggest healthy GPU has 12288)
+            job(jack, "mnist-a", 3000, 20),
+            job(jane, "cifar-b", 6000, 15),
+            job(jack, "bench-c", 2000, 10),
+            job(jane, "cifar-d", 5000, 5),
+        ])
         session.commit()
 
 
