@@ -1,14 +1,20 @@
 from datetime import datetime, timedelta, timezone
 
 from fairlane.db import SessionLocal
-from fairlane.models import Job, User, Worker, WorkerGPU
+from fairlane.models import Job, Queue, User, Worker, WorkerGPU
 
 
 def main():
     now = datetime.now(timezone.utc)
     with SessionLocal() as session:
-        jack = User(name="Jack", email="jack@example.com", password_hash="x", role="STUDENT")
-        jane = User(name="Jane", email="jane@example.com", password_hash="x", role="PROFESSOR")
+        profs = Queue(queue_name="Professors", guaranteed_memory=8192)
+        students = Queue(queue_name="Students", guaranteed_memory=6144)
+        session.add_all([profs, students])
+        session.flush()
+
+        jack = User(name="Jack", email="jack@example.com", password_hash="x", role="STUDENT",
+                    queue_id=students.queue_id)
+        jane = User(name="Jane", email="jane@example.com", password_hash="x", role="PROFESSOR", queue_id=profs.queue_id)
         session.add_all([jack, jane])
 
         node1 = Worker(worker_name="gpu-node-1", agent_url="http://10.0.0.11:8001", status="ONLINE", last_heartbeat=now)

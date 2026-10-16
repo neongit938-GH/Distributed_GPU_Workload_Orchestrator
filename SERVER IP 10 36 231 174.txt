@@ -1,0 +1,2 @@
+SERVER_IP: 10.36.231.174, on the Wi-Fi interface wlp60s0
+SUBNET: 10.36.231.0/24, which means any address from 10.36.231.1 to 10.36.231.254

@@ -17,6 +17,16 @@ class Base(DeclarativeBase):
     pass
 
 
+class Queue(Base):
+    __tablename__ = "queues"
+    __table_args__ = (CheckConstraint("guaranteed_memory >= 0", name="ck_queue_guarantee_nonneg"),)
+
+    queue_id: Mapped[int] = mapped_column(Identity(always=True), primary_key=True)
+    queue_name: Mapped[str] = mapped_column(Text, unique=True)
+    guaranteed_memory: Mapped[int] = mapped_column(Integer)   # MiB of GPU memory reserved for this queue
+
+
+
 class User(Base):
     __tablename__ = "users"
     __table_args__ = (
@@ -30,6 +40,7 @@ class User(Base):
 
     password_hash: Mapped[str] = mapped_column(Text)
     role: Mapped[str] = mapped_column(Text)
+    queue_id: Mapped[int] = mapped_column(ForeignKey("queues.queue_id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
