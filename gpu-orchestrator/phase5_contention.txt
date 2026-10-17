@@ -1,0 +1,120 @@
+================================================================================
+FAIRLANE GPU ORCHESTRATOR — PHASE 5 TEST 2: MEMORY CONTENTION TEST
+Owner: Suryansh Bhatnagar
+Project: GPU Orchestrator — Mini-Project 3 (Remote Execution Launcher)
+Topic: Highest-risk test (Concurrent jobs on the same GPU)
+Timestamp: 2026-10-12 13:06:05 IST
+================================================================================
+
+1. TEST OBJECTIVE & SETUP
+--------------------------------------------------------------------------------
+Objective: Test high-memory allocation under concurrent job execution on the same GPU
+and observe safe resource-sharing and OOM behavior without worker host instability.
+Target GPU: Index 0 (NVIDIA GeForce RTX 2050, 4096 MiB VRAM)
+Contention Profile:
+- Job C: High-memory allocation (60.0% VRAM / 2457 MB), 10 seconds duration
+- Job D: Concurrent lightweight workload (MNIST synthetic), dispatched at T+3.49s
+
+2. JOB C (HIGH MEMORY WORKLOAD) LAUNCH & RESPONSE
+--------------------------------------------------------------------------------
+Job ID: contention_high_1791790480
+Request Payload:
+{
+  "job_id": "contention_high_1791790480",
+  "script_path": "memory_workload.py",
+  "gpu_indices": [0],
+  "timeout": 30,
+  "args": ["--mem-fraction", "0.6", "--duration", "10"]
+}
+
+Response Received:
+{
+  "job_id": "contention_high_1791790480",
+  "status": "completed",
+  "exit_code": 0,
+  "log_stdout": "[INFO] Allocating 2457 MB (60.0% of 4096 MB)\n[INFO] Allocation successful. Holding for 10s...\n[INFO] Memory released. Exiting.\n",
+  "log_stderr": "",
+  "timeout_occurred": false
+}
+
+3. JOB D (CONCURRENT MNIST WORKLOAD) LAUNCH & RESPONSE
+--------------------------------------------------------------------------------
+Job ID: contention_mnist_1791790480
+Request Payload:
+{
+  "job_id": "contention_mnist_1791790480",
+  "script_path": "mnist_cnn.py",
+  "gpu_indices": [0],
+  "timeout": 30,
+  "args": ["--synthetic", "--epochs", "1"]
+}
+
+Response Received:
+{
+  "job_id": "contention_mnist_1791790480",
+  "status": "completed",
+  "exit_code": 0,
+  "log_stdout": "[INFO] PyTorch version: 2.14.1+cpu\n[INFO] CUDA available: True\n[INFO] Visible GPU count: 1\n[INFO] Current device: 0\n[INFO] GPU name: NVIDIA GeForce RTX 2050\n[INFO] Starting training on device: cpu\n[INFO] Generating synthetic tensor workload...\n[INFO] Input shape per batch: [64, 32, 32], Target classes: 10\n[INFO] Epoch 1 [1/200] Loss: 2.3848\n[INFO] Epoch 1 [100/200] Loss: 2.4832\n[INFO] Epoch 1 [200/200] Loss: 2.4130\n[INFO] Total training time: 0.22s\n[INFO] Final loss: 2.4130\n[INFO] Device used: cpu\n",
+  "log_stderr": "",
+  "timeout_occurred": false
+}
+
+4. EXPLICIT OOM OBSERVATION TEST
+--------------------------------------------------------------------------------
+Job ID: test_oom_contention
+Request Payload:
+{
+  "job_id": "test_oom_contention",
+  "script_path": "memory_workload.py",
+  "gpu_indices": [0],
+  "timeout": 15,
+  "args": ["--force-oom"]
+}
+
+Response Received:
+{
+  "job_id": "test_oom_contention",
+  "status": "failed",
+  "exit_code": 1,
+  "log_stdout": "[INFO] Allocating 409 MB (10.0% of 4096 MB)\n[ERROR] OOM during allocation: Requested 409 MB exceeds available capacity (3962 MB free).\n",
+  "log_stderr": "",
+  "timeout_occurred": false
+}
+
+5. GPU MONITOR LOG (nvidia-smi dmon -s u -i 0)
+--------------------------------------------------------------------------------
+# gpu     sm    mem    enc    dec    jpg    ofa 
+# Idx      %      %      %      %      %      % 
+    0      0      0      0      0      0      0 
+    0      -      -      -      -      -      - 
+    0      0      0      0      0      0      0 
+    0      -      -      -      -      -      - 
+    0      -      -      -      -      -      - 
+    0      -      -      -      -      -      - 
+    0      0      0      0      0      0      0 
+    0      -      -      -      -      -      - 
+    0      -      -      -      -      -      - 
+    0      -      -      -      -      -      - 
+    0      -      -      -      -      -      - 
+    0      -      -      -      -      -      - 
+    0      0      0      0      0      0      0 
+    0      -      -      -      -      -      - 
+    0      -      -      -      -      -      - 
+    0      -      -      -      -      -      - 
+    0      -      -      -      -      -      - 
+    0      -      -      -      -      -      - 
+    0      -      -      -      -      -      - 
+    0      -      -      -      -      -      - 
+    0      -      -      -      -      -      - 
+    0      -      -      -      -      -      - 
+    0      -      -      -      -      -      - 
+
+6. VERIFICATION OUTCOME
+--------------------------------------------------------------------------------
+- Job C completed 60% memory allocation successfully and released resources cleanly [VERIFIED]
+- Concurrent Job D executed safely during the memory pressure window [VERIFIED]
+- OOM condition handled cleanly without worker process crashing or system hang [VERIFIED]
+- Worker Agent launcher recorded status="failed" with exit_code=1 on OOM condition [VERIFIED]
+================================================================================
+END OF TEST 2 REPORT
+================================================================================

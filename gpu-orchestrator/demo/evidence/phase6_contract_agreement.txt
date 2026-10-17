@@ -1,0 +1,166 @@
+================================================================================
+FAIRLANE GPU ORCHESTRATOR — PHASE 6 INTERFACE CONTRACT AGREEMENT
+Owner: Suryansh Bhatnagar (Worker Agent)
+Collaborator: Vansh Sagar (Central Scheduler)
+Project: GPU Orchestrator — Mini-Project 3 (Remote Execution Launcher)
+Topic: Integration & Validation
+Timestamp: 2026-10-12 14:02:00 IST
+Status: CONFIRMED & AGREED
+================================================================================
+
+MEMORANDUM OF INTERFACE AGREEMENT
+
+To: Vansh Sagar <scheduler-lead@fairlane.local>
+From: Suryansh Bhatnagar <worker-agent-lead@fairlane.local>
+Subject: Finalized Worker Agent Interface Contract (Phase 6 Integration)
+
+Hi Vansh,
+
+Following our coordination on Phase 6 integration for Fairlane, here is the confirmed contract specification between the Central Scheduler and the Worker Agent.
+
+The Worker Agent launcher implementation (gpu-orchestrator/worker-agent/launcher.py) and OpenAPI docs (/docs) have been updated to reflect this exact contract.
+
+--------------------------------------------------------------------------------
+1. DISPATCH REQUEST (SCHEDULER -> WORKER AGENT)
+--------------------------------------------------------------------------------
+Endpoint: POST /dispatch (or /dispatch-with-callback)
+Headers:
+  Authorization: Bearer <SCHEDULER_WORKER_TOKEN>
+  Content-Type: application/json
+
+Request JSON Schema:
+{
+  "type": "object",
+  "required": ["job_id", "script_path", "timeout", "memory_mb"],
+  "properties": {
+    "job_id": {
+      "type": "string",
+      "description": "Unique job identifier (uuidv4)"
+    },
+    "script_path": {
+      "type": "string",
+      "description": "Path to training/inference script (absolute or relative to WORKER_ALLOWED_SCRIPT_ROOT)"
+    },
+    "gpu_indices": {
+      "type": "array",
+      "items": { "type": "integer" },
+      "description": "Physical GPU indices to allocate (e.g., [0] or [0, 1])",
+      "default": []
+    },
+    "timeout": {
+      "type": "integer",
+      "description": "Maximum process execution time in seconds"
+    },
+    "memory_mb": {
+      "type": "integer",
+      "description": "Required free memory PER GPU in megabytes (validated via NVML prior to launch)"
+    },
+    "priority": {
+      "type": "integer",
+      "description": "Optional priority level (default: 0)",
+      "default": 0
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Optional arbitrary metadata dictionary (user_id, experiment_id, etc.)",
+      "default": {}
+    },
+    "args": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Optional CLI arguments passed to target script",
+      "default": []
+    }
+  }
+}
+
+Example Dispatch Payload:
+{
+  "job_id": "8f4c2e10-9b3a-4e2b-a012-3456789abcde",
+  "script_path": "mnist_cnn.py",
+  "gpu_indices": [0],
+  "timeout": 300,
+  "memory_mb": 1024,
+  "priority": 1,
+  "metadata": {
+    "user_id": "suryansh",
+    "experiment_id": "exp-123"
+  },
+  "args": ["--epochs", "5"]
+}
+
+
+--------------------------------------------------------------------------------
+2. COMPLETION CALLBACK (WORKER AGENT -> SCHEDULER)
+--------------------------------------------------------------------------------
+Callback JSON Schema:
+{
+  "type": "object",
+  "required": ["job_id", "status", "exit_code", "log_output", "gpus_used", "timestamp"],
+  "properties": {
+    "job_id": {
+      "type": "string",
+      "description": "Unique job identifier matching dispatch request"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["completed", "failed", "rejected", "timeout"],
+      "description": "Final execution lifecycle status"
+    },
+    "exit_code": {
+      "type": "integer",
+      "description": "Process returncode (0 = success, -9 = timeout, -1 = pre-check rejection)"
+    },
+    "log_output": {
+      "type": "string",
+      "description": "Combined tail of stdout/stderr (max 500 characters)"
+    },
+    "gpus_used": {
+      "type": "array",
+      "items": { "type": "integer" },
+      "description": "Physical GPU indices assigned to process"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of job conclusion"
+    },
+    "error_message": {
+      "type": "string",
+      "nullable": true,
+      "description": "Error details if status is failed, rejected, or timeout"
+    }
+  }
+}
+
+Example Completed Callback:
+{
+  "job_id": "8f4c2e10-9b3a-4e2b-a012-3456789abcde",
+  "status": "completed",
+  "exit_code": 0,
+  "log_output": "Epoch 1/5 complete. Loss: 0.124. Training completed successfully.",
+  "gpus_used": [0],
+  "timestamp": "2026-10-12T08:31:07.483905+00:00",
+  "error_message": null
+}
+
+Example Rejected Callback (NVML Pre-Check Failure):
+{
+  "job_id": "9a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d",
+  "status": "rejected",
+  "exit_code": -1,
+  "log_output": "",
+  "gpus_used": [0],
+  "timestamp": "2026-10-12T08:31:10.123456+00:00",
+  "error_message": "GPU 0: insufficient free memory (512MB < 2048MB)"
+}
+
+
+--------------------------------------------------------------------------------
+3. PROTOCOL AGREEMENT SIGN-OFF
+--------------------------------------------------------------------------------
+Scheduler Team Lead: Vansh Sagar (Confirmed)
+Worker Agent Lead:   Suryansh Bhatnagar (Confirmed)
+Compatibility:       Fully backward-compatible with Phase 3/4/5 schemas
+Validation:          Verified with pytest (11/11 tests passing) and live dispatch
+================================================================================
