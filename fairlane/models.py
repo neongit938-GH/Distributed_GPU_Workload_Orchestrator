@@ -167,6 +167,8 @@ class JobExecution(Base):
 
     exit_code: Mapped[int | None] = mapped_column(Integer)
 
+    log_path: Mapped[str | None] = mapped_column(Text)
+
 
     failure_reason: Mapped[str | None] = mapped_column(Text)
 
