@@ -10,8 +10,7 @@ HEARTBEAT_TIMEOUT_S = 30   # 3 missed heartbeats at a 10 s interval
 
 
 def requeue_worker_jobs(session: Session, worker_id: int, reason: str) -> list[int]:
-    """Fail every active attempt on this worker and put its jobs back in the queue.
-    Must be called inside a transaction."""
+
     executions = session.scalars(
         select(JobExecution)
         .where(JobExecution.worker_id == worker_id, JobExecution.status.in_(ACTIVE))
@@ -28,8 +27,7 @@ def requeue_worker_jobs(session: Session, worker_id: int, reason: str) -> list[i
 
 
 def reap_dead_workers(session: Session, timeout_s: int = HEARTBEAT_TIMEOUT_S) -> dict[int, list[int]]:
-    """Mark workers OFFLINE if their last heartbeat is too old, and requeue their jobs.
-    Returns {worker_id: [requeued job_ids]}."""
+
     with session.begin():
         dead = session.scalars(
             select(Worker)

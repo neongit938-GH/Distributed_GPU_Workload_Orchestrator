@@ -15,12 +15,14 @@ def get_session():
         yield session
 
 
-# ---------- request bodies (Pydantic validates them automatically) ----------
+# ---------- request bodies  ----------
 
 class GPUInfo(BaseModel):
     gpu_index: int = Field(ge=0)
     gpu_name: str | None = None
     total_memory_mib: int = Field(gt=0)
+
+
 
 
 class RegisterRequest(BaseModel):
@@ -34,6 +36,10 @@ class HeartbeatRequest(BaseModel):
     running_execution_ids: list[int] = []
 
 
+
+
+
+
 class StartedRequest(BaseModel):
     container_id: str
 
@@ -43,15 +49,29 @@ class CompleteRequest(BaseModel):
     log_path: str | None = None
 
 
+
+
+
+
+
+
+
+
 # ---------- endpoints ----------
 
 @router.post("/worker/register")
 def register(req: RegisterRequest, session: Session = Depends(get_session)):
+
+
+
     with session.begin():
         worker = session.scalars(
             select(Worker).where(Worker.worker_name == req.worker_name).with_for_update()
         ).first()
         requeued = []
+
+
+
         if worker is None:
             worker = Worker(worker_name=req.worker_name, agent_url=req.agent_url)
             session.add(worker)
@@ -60,12 +80,19 @@ def register(req: RegisterRequest, session: Session = Depends(get_session)):
             # A worker that registers again has restarted: whatever it was running is gone.
             requeued = requeue_worker_jobs(session, worker.worker_id, "worker restarted")
         worker.agent_url = req.agent_url
+
+
+
+
         if worker.status != "DRAINING":
             worker.status = "ONLINE"
         worker.last_heartbeat = func.now()
 
         existing = {g.gpu_index: g for g in session.scalars(
             select(WorkerGPU).where(WorkerGPU.worker_id == worker.worker_id))}
+
+
+
         for g in req.gpus:
             row = existing.get(g.gpu_index)
             if row is None:
@@ -75,6 +102,15 @@ def register(req: RegisterRequest, session: Session = Depends(get_session)):
                 row.gpu_name, row.total_memory, row.is_healthy = g.gpu_name, g.total_memory_mib, True
         worker_id = worker.worker_id
     return {"worker_id": worker_id, "requeued_jobs": requeued}
+
+
+
+
+
+
+
+
+
 
 
 @router.post("/worker/heartbeat")
@@ -90,6 +126,13 @@ def heartbeat(req: HeartbeatRequest, session: Session = Depends(get_session)):
     return {"ok": True}
 
 
+
+
+
+
+
+
+
 @router.post("/executions/{execution_id}/started")
 def started(execution_id: int, req: StartedRequest, session: Session = Depends(get_session)):
     with session.begin():
@@ -101,6 +144,17 @@ def started(execution_id: int, req: StartedRequest, session: Session = Depends(g
         ex.status, ex.container_id, ex.started_at = "RUNNING", req.container_id, func.now()
         session.get(Job, ex.job_id, with_for_update=True).status = "RUNNING"
     return {"ok": True}
+
+
+
+
+
+
+
+
+
+
+
 
 
 @router.post("/executions/{execution_id}/complete")

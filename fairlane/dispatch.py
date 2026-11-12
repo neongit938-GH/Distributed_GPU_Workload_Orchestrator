@@ -10,7 +10,7 @@ DISPATCH_TIMEOUT_S = 3
 
 def dispatch(execution_id: int) -> bool:
     """Send one ASSIGNED execution to its worker. Returns True if the worker accepted it."""
-    # 1. Read what to send (short transaction, no locks held during the network call)
+    # 1. Read what to send
     with SessionLocal() as session:
         ex, job, worker, gpu = session.execute(
             select(JobExecution, Job, Worker, WorkerGPU)

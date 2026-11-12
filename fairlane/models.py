@@ -22,8 +22,11 @@ class Queue(Base):
     __table_args__ = (CheckConstraint("guaranteed_memory >= 0", name="ck_queue_guarantee_nonneg"),)
 
     queue_id: Mapped[int] = mapped_column(Identity(always=True), primary_key=True)
+
+
+
     queue_name: Mapped[str] = mapped_column(Text, unique=True)
-    guaranteed_memory: Mapped[int] = mapped_column(Integer)   # MiB of GPU memory reserved for this queue
+    guaranteed_memory: Mapped[int] = mapped_column(Integer)   # GPU memory reserved for this queue
 
 
 
@@ -36,7 +39,7 @@ class User(Base):
     user_id: Mapped[int] = mapped_column(Identity(always=True), primary_key=True)
     name: Mapped[str] = mapped_column(Text)
     email: Mapped[str] = mapped_column(Text, unique=True)
-
+    unix_user: Mapped[str] = mapped_column(Text, unique=True)
 
     password_hash: Mapped[str] = mapped_column(Text)
     role: Mapped[str] = mapped_column(Text)
@@ -58,7 +61,7 @@ class Job(Base):
     job_id: Mapped[int] = mapped_column(Identity(always=True), primary_key=True)
 
 
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id")) # users to job, one to many
 
 
     job_name: Mapped[str] = mapped_column(Text)
@@ -109,11 +112,18 @@ class WorkerGPU(Base):
         UniqueConstraint("worker_id", "gpu_index", name="uq_worker_gpu_index"),
         CheckConstraint("total_memory > 0", name="ck_gpu_total_memory_positive"),
     )
+
+
     gpu_id: Mapped[int] = mapped_column(Identity(always=True), primary_key=True)
+
     worker_id: Mapped[int] = mapped_column(ForeignKey("workers.worker_id"))
-    gpu_index: Mapped[int] = mapped_column(Integer)          # 0, 1, 2... as the worker sees it
+
+    gpu_index: Mapped[int] = mapped_column(Integer)
+
     gpu_name: Mapped[str | None] = mapped_column(Text)
-    total_memory: Mapped[int] = mapped_column(Integer)       # MiB
+
+    total_memory: Mapped[int] = mapped_column(Integer)
+
     is_healthy: Mapped[bool] = mapped_column(server_default=true())
 
 
@@ -132,7 +142,7 @@ class JobExecution(Base):
             "status IN ('ASSIGNED','RUNNING','COMPLETED','FAILED','CANCELLED')",
             name="ck_exec_status",
         ),
-        # At most ONE active attempt per job, enforced by Postgres itself
+        # At most 1 active attempt per job
         Index(
             "uq_exec_one_active_per_job", "job_id", unique=True,
             postgresql_where=text("status IN ('ASSIGNED','RUNNING')"),

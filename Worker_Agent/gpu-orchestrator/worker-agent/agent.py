@@ -132,3 +132,44 @@ def execute(req: ExecuteRequest):
         raise HTTPException(status_code=409, detail=reason)   # NVML says no -> scheduler requeues
     threading.Thread(target=run_and_report, args=(req, script, gpu_indices), daemon=True).start()
     return {"accepted": True, "execution_id": req.execution_id}
+
+
+
+
+
+from collections import deque
+
+@app.get("/logs/{execution_id}")
+def logs(execution_id: int, lines: int = 50):
+    out = {}
+    for kind in ("out", "err"):
+        path = os.path.join(launcher.DEFAULT_LOG_DIR, f"job_exec{execution_id}.{kind}")
+        if os.path.exists(path):
+            with open(path, encoding="utf-8", errors="replace") as f:
+                out[kind] = "".join(deque(f, maxlen=min(lines, 500)))
+        else:
+            out[kind] = None
+    if out["out"] is None and out["err"] is None:
+        raise HTTPException(404, "no logs for this execution")
+    return out
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

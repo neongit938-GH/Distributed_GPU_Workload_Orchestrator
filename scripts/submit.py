@@ -8,7 +8,7 @@ from fairlane.models import Job, User
 
 user_name, job_name, mib = sys.argv[1], sys.argv[2], int(sys.argv[3])
 with SessionLocal() as s, s.begin():
-    user = s.scalars(select(User).where(func.lower(User.name) == user_name.lower())).one()
+    user = s.scalars(select(User).where(func.lower(User.name) == user.unix_user)).one()
     job = Job(user_id=user.user_id, job_name=job_name, script_path=f"users/{user.name.lower()}/{job_name}/train.py",
               priority=1 if user.role == "PROFESSOR" else 5, required_gpu_memory=mib)
     s.add(job)

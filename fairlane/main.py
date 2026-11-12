@@ -10,6 +10,11 @@ from fairlane.failure import reap_dead_workers
 from fairlane.scheduler import assign_once
 from fairlane.worker_api import router as worker_router
 
+from fastapi.middleware.cors import CORSMiddleware
+from fairlane.user_api import router as user_router
+
+from fairlane.auth import router as auth_router
+
 log = logging.getLogger("uvicorn.error")
 REAPER_INTERVAL_S = 10
 SCHEDULER_INTERVAL_S = 2
@@ -18,6 +23,11 @@ SCHEDULER_INTERVAL_S = 2
 def reap_once():
     with SessionLocal() as session:
         return reap_dead_workers(session)
+
+
+
+
+
 
 
 def schedule_once():
@@ -30,6 +40,10 @@ def schedule_once():
                 break
             assigned.append((ex.execution_id, ex.job_id, ex.worker_id))
     return [(eid, jid, wid, dispatch(eid)) for eid, jid, wid in assigned]
+
+
+
+
 
 
 async def reaper_loop():
@@ -55,6 +69,9 @@ async def scheduler_loop():
         await asyncio.sleep(SCHEDULER_INTERVAL_S)
 
 
+
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     tasks = [asyncio.create_task(reaper_loop()), asyncio.create_task(scheduler_loop())]
@@ -65,6 +82,32 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Fairlane central server", lifespan=lifespan)
 app.include_router(worker_router)
+
+
+
+
+
+
+
+app.include_router(user_router)
+app.include_router(auth_router)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+
+
+from pathlib import Path
+from fastapi.responses import FileResponse
+
+@app.get("/", include_in_schema=False)
+def dashboard():
+    return FileResponse(Path(__file__).parent / "static" / "index.html")
+
+
+
+
+@app.get("/", include_in_schema=False)
+def dashboard():
+    return FileResponse(Path(__file__).parent / "static" / "index.html")
 
 
 

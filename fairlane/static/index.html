@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fairlane · GPU Scheduler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#07090f; --panel:#0e1220; --panel2:#121829; --line:#1e2740; --text:#e6ebff; --muted:#7f8bb0;
+    --cyan:#22e4ff; --violet:#a855f7; --pink:#ff3df2; --green:#39ff9f; --amber:#ffc53d; --red:#ff4d6d; --blue:#4d8dff;
+    --mono:"JetBrains Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,sans-serif;color:var(--text);background:
+       radial-gradient(1200px 600px at 10% -10%, #1b1050 0%, transparent 60%),
+       radial-gradient(900px 500px at 110% 10%, #052f45 0%, transparent 55%), var(--bg);
+       min-height:100vh}
+  .wrap{max-width:1280px;margin:0 auto;padding:28px 24px 60px}
+  /* header */
+  header{display:flex;align-items:center;gap:16px;margin-bottom:26px}
+  .logo{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:20px;
+        background:linear-gradient(135deg,var(--cyan),var(--violet));color:#05060a;box-shadow:0 0 24px #22e4ff66}
+  h1{margin:0;font-size:24px;letter-spacing:.02em}
+  h1 span{background:linear-gradient(90deg,var(--cyan),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:var(--muted);font-size:13px;margin-top:2px}
+  .live{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);
+        border:1px solid var(--line);padding:6px 12px;border-radius:999px;background:#0b0f1c}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);animation:pulse 1.6s infinite}
+  .dot.off{background:var(--red);box-shadow:0 0 10px var(--red)}
+  @keyframes pulse{50%{opacity:.35}}
+  /* stats */
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px}
+  .stat{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:14px 16px;position:relative;overflow:hidden}
+  .stat::after{content:"";position:absolute;inset:auto 0 0 0;height:2px;background:var(--c);box-shadow:0 0 12px var(--c)}
+  .stat b{display:block;font-size:28px;font-weight:800;color:var(--c);text-shadow:0 0 18px color-mix(in srgb,var(--c) 60%,transparent)}
+  .stat small{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+  /* layout */
+  .grid{display:grid;grid-template-columns:360px 1fr;gap:18px;align-items:start}
+  .card{background:linear-gradient(180deg,#10162a,#0c1120);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:18px}
+  .card h2{margin:0 0 14px;font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);display:flex;align-items:center;gap:8px}
+  .card h2::before{content:"";width:6px;height:6px;border-radius:2px;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+  /* form */
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
+  input,select{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:#0a0e1a;color:var(--text);
+               font:inherit;outline:none;transition:.2s}
+  input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px #22e4ff22,0 0 16px #22e4ff44}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;cursor:pointer;font:600 14px Inter,sans-serif;
+       padding:11px 16px;border-radius:10px;color:#05060a;transition:.2s}
+  .btn-primary{width:100%;margin-top:16px;background:linear-gradient(90deg,var(--cyan),var(--violet));box-shadow:0 0 18px #22e4ff55}
+  .btn-primary:hover{box-shadow:0 0 28px #22e4ffaa,0 0 50px #a855f755;transform:translateY(-1px)}
+  .btn-sm{padding:5px 11px;font-size:12px;border-radius:8px;background:transparent;color:var(--c);border:1px solid var(--c);
+          box-shadow:0 0 8px color-mix(in srgb,var(--c) 35%,transparent) inset}
+  .btn-sm:hover{background:var(--c);color:#05060a;box-shadow:0 0 16px var(--c)}
+  .msg{font-size:12px;margin-top:10px;min-height:16px}
+  /* workers */
+  .worker{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:#0a0e1a}
+  .worker .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .worker .name{font-weight:700}
+  .worker .gpu{font-size:12px;color:var(--muted);margin-bottom:6px}
+  .bar{height:8px;border-radius:99px;background:#1a2238;overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--green),var(--cyan));box-shadow:0 0 10px var(--cyan)}
+  .mem{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:5px}
+  /* tables */
+  table{width:100%;border-collapse:separate;border-spacing:0 6px;font-size:13.5px}
+  th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:0 10px 4px}
+  td{padding:10px;background:#0a0e1a;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  td:first-child{border-left:1px solid var(--line);border-radius:10px 0 0 10px}
+  td:last-child{border-right:1px solid var(--line);border-radius:0 10px 10px 0;text-align:right}
+  tr:hover td{background:#0f1528;border-color:#2a3760}
+  .mono{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.06em;
+        color:var(--c);border:1px solid var(--c);background:color-mix(in srgb,var(--c) 12%,transparent);
+        box-shadow:0 0 10px color-mix(in srgb,var(--c) 40%,transparent)}
+  .QUEUED{--c:var(--amber)} .ASSIGNED{--c:var(--violet)} .RUNNING{--c:var(--cyan)} .COMPLETED{--c:var(--green)}
+  .FAILED{--c:var(--red)} .CANCELLED{--c:var(--pink)} .ONLINE{--c:var(--green)} .OFFLINE{--c:var(--red)} .DRAINING{--c:var(--amber)}
+  .RUNNING{animation:glow 1.4s ease-in-out infinite}
+  @keyframes glow{50%{box-shadow:0 0 18px var(--cyan)}}
+  .prof{color:var(--violet)} .stud{color:var(--blue)}
+  /* log */
+  pre{margin:0;background:#04060c;border:1px solid var(--line);border-radius:12px;padding:14px;max-height:280px;overflow:auto;
+      font:12.5px/1.55 var(--mono);color:#b9c6ff;white-space:pre-wrap}
+  pre .h{color:var(--cyan)} pre .e{color:var(--red)}
+  .empty{color:var(--muted);font-size:13px;padding:8px 2px}
+  /* auth */
+  .overlay{position:fixed;inset:0;display:grid;place-items:center;background:rgba(4,6,12,.86);backdrop-filter:blur(6px);z-index:10}
+  .overlay.hidden{display:none}
+  .auth{width:min(420px,92vw);background:linear-gradient(180deg,#121a30,#0b1020);border:1px solid #2a3760;border-radius:18px;padding:26px;
+        box-shadow:0 0 40px #a855f733,0 0 80px #22e4ff22}
+  .auth h1{font-size:22px;margin:0 0 4px}
+  .tabs{display:flex;gap:6px;margin:16px 0 4px;background:#0a0e1a;border:1px solid var(--line);border-radius:12px;padding:4px}
+  .tabs button{flex:1;border:0;background:transparent;color:var(--muted);font:600 13px Inter,sans-serif;padding:9px;border-radius:9px;cursor:pointer}
+  .tabs button.on{background:linear-gradient(90deg,#22e4ff33,#a855f733);color:var(--text);box-shadow:0 0 12px #22e4ff33 inset}
+  .hidden{display:none}
+  .who{display:flex;align-items:center;gap:10px;font-size:13px}
+  .who b{color:var(--text)} .who .mono{color:var(--cyan)}
+  input[type=file]{padding:9px}
+  @media (max-width:980px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">F</div>
+    <div><h1><span>Fairlane</span> GPU Scheduler</h1><div class="sub">Fair &amp; fault-tolerant scheduling for ML training jobs</div></div>
+    <div class="live"><span class="dot" id="dot"></span><span id="liveTxt">live · refreshing every 3 s</span></div>
+    <div class="who"><span><b id="meName">–</b> <span class="pill" id="meRole">–</span><br><span class="mono" id="meUnix"></span></span>
+      <button class="btn btn-sm" style="--c:var(--pink)" onclick="logout()">⎋ logout</button></div>
+  </header>
+
+  <section class="stats">
+    <div class="stat" style="--c:var(--amber)"><b id="sQ">0</b><small>Queued</small></div>
+    <div class="stat" style="--c:var(--cyan)"><b id="sR">0</b><small>Running</small></div>
+    <div class="stat" style="--c:var(--green)"><b id="sC">0</b><small>Completed</small></div>
+    <div class="stat" style="--c:var(--red)"><b id="sF">0</b><small>Failed / Cancelled</small></div>
+    <div class="stat" style="--c:var(--violet)"><b id="sW">0</b><small>Workers online</small></div>
+  </section>
+
+  <div class="grid">
+    <aside>
+      <div class="card">
+        <h2>Submit a job</h2>
+        <form id="f">
+          <label>My script (from my NFS folder)</label><select id="job"></select>
+          <label>GPU memory (MiB)</label><input id="mib" type="number" value="3000" min="1">
+          <button class="btn btn-primary">⚡ Submit job</button>
+          <div class="msg" id="msg"></div>
+        </form>
+      </div>
+      <div class="card">
+        <h2>Upload a script</h2>
+        <form id="up">
+          <label>Job name</label><input id="upName" placeholder="e.g. mnist" required pattern="[A-Za-z0-9_-]+">
+          <label>Python file</label><input id="upFile" type="file" accept=".py" required>
+          <button class="btn btn-primary">⬆ Upload to my NFS folder</button>
+          <div class="msg" id="upMsg"></div>
+        </form>
+      </div>
+      <div class="card">
+        <h2>Workers &amp; GPUs</h2>
+        <div id="workers"><div class="empty">no workers yet</div></div>
+      </div>
+    </aside>
+
+    <main>
+      <div class="card">
+        <h2>Jobs</h2>
+        <table id="jobs"></table>
+      </div>
+      <div class="card">
+        <h2>Recent executions</h2>
+        <table id="execs"></table>
+      </div>
+      <div class="card">
+        <h2>Execution log <span class="mono" id="logId"></span></h2>
+        <pre id="log">Click “log” on an execution to see its output.</pre>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="overlay" id="authBox">
+  <div class="auth">
+    <h1><span style="background:linear-gradient(90deg,var(--cyan),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent">Fairlane</span> GPU Scheduler</h1>
+    <div class="sub">Log in, or sign up to get your own NFS folder.</div>
+    <div class="tabs"><button id="tLogin" class="on" type="button">Log in</button><button id="tSignup" type="button">Sign up</button></div>
+    <form id="loginF">
+      <label>Email</label><input id="liEmail" type="email" required>
+      <label>Password</label><input id="liPass" type="password" required>
+      <button class="btn btn-primary">Log in</button>
+    </form>
+    <form id="signupF" class="hidden">
+      <label>Full name</label><input id="suName" required minlength="2">
+      <label>Email</label><input id="suEmail" type="email" required>
+      <label>Password (min 6)</label><input id="suPass" type="password" required minlength="6">
+      <label>I am a</label><select id="suRole"><option value="STUDENT">Student</option><option value="PROFESSOR">Professor</option></select>
+      <div id="codeRow" class="hidden"><label>Professor invite code</label><input id="suCode"></div>
+      <button class="btn btn-primary">Create account + NFS folder</button>
+    </form>
+    <div class="msg" id="authMsg"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let TOKEN = null;
+try { TOKEN = localStorage.getItem("fl_token"); } catch (e) {}
+const api = (u, opt = {}) => {
+  opt.headers = Object.assign({}, opt.headers, TOKEN ? {Authorization: "Bearer " + TOKEN} : {});
+  return fetch(u, opt).then(r => { if (r.status === 401 && TOKEN) logout(); return r; });
+};
+const get = u => api(u).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+const errText = d => typeof d.detail === "string" ? d.detail : Array.isArray(d.detail) ? d.detail.map(x => x.msg).join("; ") : JSON.stringify(d);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pill = s => `<span class="pill ${esc(s)}">${esc(s)}</span>`;
+const ACTIVE = ["QUEUED", "ASSIGNED", "RUNNING"];
+
+function renderJobs(jobs) {
+  $("sQ").textContent = jobs.filter(j => j.status === "QUEUED").length;
+  $("sR").textContent = jobs.filter(j => j.status === "RUNNING" || j.status === "ASSIGNED").length;
+  $("sC").textContent = jobs.filter(j => j.status === "COMPLETED").length;
+  $("sF").textContent = jobs.filter(j => j.status === "FAILED" || j.status === "CANCELLED").length;
+  $("jobs").innerHTML = "<tr><th>#</th><th>Job</th><th>User</th><th>Priority</th><th>GPU MiB</th><th>Status</th><th></th></tr>" +
+    (jobs.length ? jobs.map(j => `<tr>
+      <td class="mono">${j.job_id}</td><td><b>${esc(j.job_name)}</b></td>
+      <td class="${j.role === "PROFESSOR" ? "prof" : "stud"}">${esc(j.user)}</td>
+      <td class="mono">${j.priority}</td><td class="mono">${j.required_gpu_memory}</td>
+      <td>${pill(j.status)}</td>
+      <td>${ACTIVE.includes(j.status) ? `<button class="btn btn-sm" style="--c:var(--pink)" onclick="cancelJob(${j.job_id})">✕ cancel</button>` : ""}</td>
+    </tr>`).join("") : `<tr><td colspan="7" class="empty">no jobs</td></tr>`);
+}
+
+function renderExecs(ex) {
+  $("execs").innerHTML = "<tr><th>Exec</th><th>Job</th><th>Worker</th><th>Status</th><th>Exit</th><th>Reason</th><th></th></tr>" +
+    (ex.length ? ex.map(e => `<tr>
+      <td class="mono">${e.execution_id}</td><td>${esc(e.job_name)}</td><td class="mono">${esc(e.worker_name)}</td>
+      <td>${pill(e.status)}</td><td class="mono">${e.exit_code ?? "–"}</td>
+      <td class="mono">${esc(e.failure_reason ?? "")}</td>
+      <td><button class="btn btn-sm" style="--c:var(--cyan)" onclick="showLog(${e.execution_id})">▤ log</button></td>
+    </tr>`).join("") : `<tr><td colspan="7" class="empty">no executions yet</td></tr>`);
+}
+
+function renderWorkers(rows) {
+  const byWorker = {};
+  rows.forEach(r => (byWorker[r.worker_name] ??= {...r, gpus: []}).gpus.push(r));
+  const ws = Object.values(byWorker);
+  $("sW").textContent = ws.filter(w => w.status === "ONLINE").length;
+  $("workers").innerHTML = ws.length ? ws.map(w => `<div class="worker">
+      <div class="top"><span class="name">${esc(w.worker_name)}</span>${pill(w.status)}</div>
+      ${w.gpus.map(g => {
+        const used = g.total_memory - g.free_memory, pct = Math.max(0, Math.min(100, 100 * used / g.total_memory));
+        return `<div class="gpu">GPU ${g.gpu_index} · ${esc(g.gpu_name ?? "unknown")}</div>
+          <div class="bar"><i style="width:${pct}%"></i></div>
+          <div class="mem"><span>${used} MiB used</span><span>${g.total_memory} MiB</span></div>`;
+      }).join("")}
+    </div>`).join("") : `<div class="empty">no workers yet</div>`;
+}
+
+async function refresh() {
+  try {
+    const [jobs, ex, ws] = await Promise.all([get("/api/jobs"), get("/api/executions"), get("/api/workers")]);
+    renderJobs(jobs); renderExecs(ex); renderWorkers(ws);
+    $("dot").classList.remove("off"); $("liveTxt").textContent = "live · refreshing every 3 s";
+  } catch (e) {
+    $("dot").classList.add("off"); $("liveTxt").textContent = "server unreachable";
+  }
+}
+
+async function cancelJob(id) {
+  const r = await api(`/api/jobs/${id}/cancel`, {method: "POST"});
+  if (!r.ok) alert(errText(await r.json().catch(() => ({}))));
+  refresh();
+}
+
+async function showLog(id) {
+  $("logId").textContent = `· execution ${id}`;
+  $("log").textContent = "loading…";
+  const r = await api(`/api/executions/${id}/log`);
+  const d = await r.json().catch(() => ({}));
+  $("log").innerHTML = r.ok
+    ? `<span class="h">── stdout ──</span>\n${esc(d.out ?? "(empty)")}\n<span class="e">── stderr ──</span>\n${esc(d.err ?? "(empty)")}`
+    : `<span class="e">${esc(d.detail ?? "log not available yet")}</span>`;
+}
+
+$("f").onsubmit = async e => {
+  e.preventDefault();
+  if (!$("job").value) { $("msg").innerHTML = `<span style="color:var(--amber)">upload a script first</span>`; return; }
+  const r = await api("/api/jobs", {method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({job_name: $("job").value, required_gpu_memory_mib: +$("mib").value})});
+  const d = await r.json().catch(() => ({}));
+  $("msg").innerHTML = r.ok ? `<span style="color:var(--green)">✓ job ${d.job_id} queued</span>`
+                            : `<span style="color:var(--red)">✕ ${esc(errText(d))}</span>`;
+  refresh();
+};
+
+$("up").onsubmit = async e => {
+  e.preventDefault();
+  const fd = new FormData();
+  fd.append("job_name", $("upName").value); fd.append("file", $("upFile").files[0]);
+  const r = await api("/api/scripts", {method: "POST", body: fd});
+  const d = await r.json().catch(() => ({}));
+  $("upMsg").innerHTML = r.ok ? `<span style="color:var(--green)">✓ saved ${esc(d.script_path)}</span>`
+                              : `<span style="color:var(--red)">✕ ${esc(errText(d))}</span>`;
+  if (r.ok) { loadScripts($("upName").value); $("up").reset(); }
+};
+
+async function loadScripts(select) {
+  const list = await get("/api/my/scripts").catch(() => []);
+  $("job").innerHTML = list.length ? list.map(n => `<option>${esc(n)}</option>`).join("") : `<option value="">(no scripts yet – upload one)</option>`;
+  if (select) $("job").value = select;
+}
+
+function setSession(d) {
+  TOKEN = d.token; try { localStorage.setItem("fl_token", TOKEN); } catch (e) {}
+  start();
+}
+function logout() {
+  TOKEN = null; try { localStorage.removeItem("fl_token"); } catch (e) {}
+  $("authBox").classList.remove("hidden");
+}
+async function start() {
+  const r = await api("/api/auth/me");
+  if (!r.ok) { logout(); return; }
+  const me = await r.json();
+  $("meName").textContent = me.name; $("meRole").textContent = me.role; $("meRole").className = "pill " + (me.role === "PROFESSOR" ? "ASSIGNED" : "RUNNING");
+  $("meUnix").textContent = "NFS: users/" + me.unix_user;
+  $("authBox").classList.add("hidden"); $("authMsg").textContent = "";
+  loadScripts(); refresh();
+}
+
+function tab(login) {
+  $("tLogin").classList.toggle("on", login); $("tSignup").classList.toggle("on", !login);
+  $("loginF").classList.toggle("hidden", !login); $("signupF").classList.toggle("hidden", login); $("authMsg").textContent = "";
+}
+$("tLogin").onclick = () => tab(true); $("tSignup").onclick = () => tab(false);
+$("suRole").onchange = () => $("codeRow").classList.toggle("hidden", $("suRole").value !== "PROFESSOR");
+async function authPost(url, body) {
+  $("authMsg").innerHTML = `<span style="color:var(--muted)">please wait…</span>`;
+  const r = await fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+  const d = await r.json().catch(() => ({}));
+  if (r.ok) setSession(d); else $("authMsg").innerHTML = `<span style="color:var(--red)">✕ ${esc(errText(d))}</span>`;
+}
+$("loginF").onsubmit = e => { e.preventDefault(); authPost("/api/auth/login", {email: $("liEmail").value, password: $("liPass").value}); };
+$("signupF").onsubmit = e => { e.preventDefault(); authPost("/api/auth/signup", {name: $("suName").value, email: $("suEmail").value,
+  password: $("suPass").value, role: $("suRole").value, prof_code: $("suCode").value || null}); };
+
+if (TOKEN) start(); else logout();
+setInterval(() => { if (TOKEN) refresh(); }, 3000);
+</script>
+</body>
+</html>
